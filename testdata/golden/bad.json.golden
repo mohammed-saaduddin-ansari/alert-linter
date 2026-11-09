@@ -1,0 +1,193 @@
+{
+  "tool": "alert-linter",
+  "version": "dev",
+  "summary": {
+    "files": 1,
+    "groups": 3,
+    "alerts": 8,
+    "recording_rules": 1,
+    "errors": 8,
+    "warnings": 10,
+    "infos": 0
+  },
+  "findings": [
+    {
+      "rule": "paging-missing-for",
+      "severity": "error",
+      "file": "examples/bad-rules.yaml",
+      "line": 8,
+      "column": 16,
+      "name": "HostHighCPU",
+      "message": "paging alert \"HostHighCPU\" (severity=critical) has no `for:`, so one bad evaluation pages someone",
+      "hint": "add `for: 5m` (or whatever the condition needs to be meaningful) so it must persist before anyone is woken"
+    },
+    {
+      "rule": "cause-based-paging",
+      "severity": "warning",
+      "file": "examples/bad-rules.yaml",
+      "line": 9,
+      "column": 15,
+      "name": "HostHighCPU",
+      "message": "paging alert \"HostHighCPU\" (severity=critical) fires on a resource cause (node_cpu_seconds_total) rather than a symptom users feel",
+      "hint": "page on error rate, latency or SLO burn rate and send this one to a ticket (e.g. severity: warning); for disks, a predict_linear() time-to-full alert is a reasonable page"
+    },
+    {
+      "rule": "high-cardinality-grouping",
+      "severity": "warning",
+      "file": "examples/bad-rules.yaml",
+      "line": 9,
+      "column": 15,
+      "name": "HostHighCPU",
+      "message": "paging alert \"HostHighCPU\" aggregates by (instance), so one incident fans out into one page per instance",
+      "hint": "page at the service level (e.g. `sum by (namespace, job)`) and list affected instances in the description or dashboard"
+    },
+    {
+      "rule": "missing-owner-label",
+      "severity": "warning",
+      "file": "examples/bad-rules.yaml",
+      "line": 10,
+      "column": 9,
+      "name": "HostHighCPU",
+      "message": "alert \"HostHighCPU\" has no owner label (team or owner)",
+      "hint": "add a team label on the rule or once on the rule group's `labels:` so routing reaches the people who can fix it"
+    },
+    {
+      "rule": "missing-description",
+      "severity": "warning",
+      "file": "examples/bad-rules.yaml",
+      "line": 12,
+      "column": 9,
+      "name": "HostHighCPU",
+      "message": "paging alert \"HostHighCPU\" has no description annotation",
+      "hint": "add a few sentences on impact and what the threshold means"
+    },
+    {
+      "rule": "missing-runbook-url",
+      "severity": "error",
+      "file": "examples/bad-rules.yaml",
+      "line": 12,
+      "column": 9,
+      "name": "HostHighCPU",
+      "message": "paging alert \"HostHighCPU\" has no runbook_url annotation",
+      "hint": "link a runbook that says what to check first and how to mitigate"
+    },
+    {
+      "rule": "cause-based-paging",
+      "severity": "warning",
+      "file": "examples/bad-rules.yaml",
+      "line": 18,
+      "column": 15,
+      "name": "HostOutOfMemory",
+      "message": "paging alert \"HostOutOfMemory\" (severity=page) fires on a resource cause (node_memory_MemAvailable_bytes, node_memory_MemTotal_bytes) rather than a symptom users feel",
+      "hint": "page on error rate, latency or SLO burn rate and send this one to a ticket (e.g. severity: warning); for disks, a predict_linear() time-to-full alert is a reasonable page"
+    },
+    {
+      "rule": "short-for",
+      "severity": "warning",
+      "file": "examples/bad-rules.yaml",
+      "line": 19,
+      "column": 14,
+      "name": "HostOutOfMemory",
+      "message": "alert \"HostOutOfMemory\" has `for: 15s`, shorter than the 1m minimum, so brief blips will fire and resolve repeatedly",
+      "hint": "raise `for:` to at least 1m, or lower min_for in the config if this really must be fast"
+    },
+    {
+      "rule": "missing-runbook-url",
+      "severity": "warning",
+      "file": "examples/bad-rules.yaml",
+      "line": 26,
+      "column": 24,
+      "name": "HostOutOfMemory",
+      "message": "alert \"HostOutOfMemory\" has runbook_url \"wiki/HostOutOfMemory\", which is not an absolute http(s) URL",
+      "hint": "use a full URL so it is clickable from the pager and chat notification"
+    },
+    {
+      "rule": "rate-window-too-short",
+      "severity": "error",
+      "file": "examples/bad-rules.yaml",
+      "line": 33,
+      "column": 15,
+      "name": "APIHighErrorRate",
+      "message": "\"APIHighErrorRate\": rate(http_requests_total{code=~\"5..\",job=\"api\"}[30s]), rate(http_requests_total{job=\"api\"}[30s]) use windows shorter than 4 x the 1m scrape interval (4m); one missed scrape leaves too few samples and the expression returns nothing",
+      "hint": "use a window of at least 4m, or set scrape_interval in the config if your targets are scraped faster"
+    },
+    {
+      "rule": "unknown-severity",
+      "severity": "error",
+      "file": "examples/bad-rules.yaml",
+      "line": 39,
+      "column": 21,
+      "name": "APIHighErrorRate",
+      "message": "alert \"APIHighErrorRate\" has severity \"crit\", which routing does not know about",
+      "hint": "use one of: critical, page, warning, info, none"
+    },
+    {
+      "rule": "high-cardinality-grouping",
+      "severity": "warning",
+      "file": "examples/bad-rules.yaml",
+      "line": 48,
+      "column": 15,
+      "name": "PodCrashLooping",
+      "message": "paging alert \"PodCrashLooping\" aggregates by (pod), so one incident fans out into one page per pod",
+      "hint": "page at the service level (e.g. `sum by (namespace, job)`) and list affected pods in the description or dashboard"
+    },
+    {
+      "rule": "missing-severity",
+      "severity": "error",
+      "file": "examples/bad-rules.yaml",
+      "line": 62,
+      "column": 9,
+      "name": "APILatencyHigh",
+      "message": "alert \"APILatencyHigh\" has no severity label, so routing cannot tell whether it should page",
+      "hint": "add `severity:` with one of: critical, page, warning, info, none"
+    },
+    {
+      "rule": "duplicate-alert",
+      "severity": "error",
+      "file": "examples/bad-rules.yaml",
+      "line": 70,
+      "column": 16,
+      "name": "PodCrashLooping",
+      "message": "alert \"PodCrashLooping\" is defined again with identical labels (first at examples/bad-rules.yaml:47)",
+      "hint": "Alertmanager cannot tell the two apart, so silences, inhibitions and grouping act on both; delete one or give them distinct labels such as different severity tiers"
+    },
+    {
+      "rule": "invalid-rule",
+      "severity": "error",
+      "file": "examples/bad-rules.yaml",
+      "line": 83,
+      "column": 15,
+      "name": "OrderQueueBacklog",
+      "message": "\"OrderQueueBacklog\" has an expression that does not parse: 1:39: parse error: unclosed left parenthesis"
+    },
+    {
+      "rule": "rate-window-too-short",
+      "severity": "error",
+      "file": "examples/bad-rules.yaml",
+      "line": 97,
+      "column": 15,
+      "name": "job:http_requests:rate1m",
+      "message": "\"job:http_requests:rate1m\": rate(http_requests_total[1m]) uses a window shorter than 4 x the 1m scrape interval (4m); one missed scrape leaves too few samples and the expression returns nothing",
+      "hint": "use a window of at least 4m, or set scrape_interval in the config if your targets are scraped faster"
+    },
+    {
+      "rule": "unknown-directive",
+      "severity": "warning",
+      "file": "examples/bad-rules.yaml",
+      "line": 99,
+      "column": 7,
+      "message": "directive disables unknown rule \"missing-sumary\", so it has no effect",
+      "hint": "check the spelling against `alert-linter --list-rules`"
+    },
+    {
+      "rule": "missing-summary",
+      "severity": "warning",
+      "file": "examples/bad-rules.yaml",
+      "line": 106,
+      "column": 9,
+      "name": "CertificateExpiringSoon",
+      "message": "alert \"CertificateExpiringSoon\" has no summary annotation",
+      "hint": "add a one-line, templated summary such as `{{ $labels.job }} is serving 5xx to {{ $value | humanizePercentage }} of requests`"
+    }
+  ]
+}

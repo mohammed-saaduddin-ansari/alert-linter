@@ -1,0 +1,765 @@
+{
+  "$schema": "https://json.schemastore.org/sarif-2.1.0.json",
+  "version": "2.1.0",
+  "runs": [
+    {
+      "tool": {
+        "driver": {
+          "name": "alert-linter",
+          "version": "dev",
+          "informationUri": "https://github.com/mohammed-saaduddin-ansari/alert-linter",
+          "rules": [
+            {
+              "id": "invalid-rule",
+              "name": "InvalidRule",
+              "shortDescription": {
+                "text": "Rule file or rule cannot be parsed"
+              },
+              "fullDescription": {
+                "text": "A rule that Prometheus cannot load never fires. Broken YAML or PromQL usually means a whole group is silently missing until someone notices the gap during an incident."
+              },
+              "help": {
+                "text": "A rule that Prometheus cannot load never fires. Broken YAML or PromQL usually means a whole group is silently missing until someone notices the gap during an incident.",
+                "markdown": "**Rule file or rule cannot be parsed**\n\nA rule that Prometheus cannot load never fires. Broken YAML or PromQL usually means a whole group is silently missing until someone notices the gap during an incident."
+              },
+              "helpUri": "https://github.com/mohammed-saaduddin-ansari/alert-linter#invalid-rule",
+              "defaultConfiguration": {
+                "level": "error"
+              },
+              "properties": {
+                "tags": [
+                  "prometheus",
+                  "alerting",
+                  "on-call"
+                ]
+              }
+            },
+            {
+              "id": "paging-missing-for",
+              "name": "PagingMissingFor",
+              "shortDescription": {
+                "text": "Paging alert has no `for:` duration"
+              },
+              "fullDescription": {
+                "text": "Without `for:` the alert fires on the first evaluation where the expression is true. One slow scrape, a restart or a deploy blip is enough to wake someone, and the alert resolves before they open a laptop. Requiring the condition to persist is the cheapest way to remove pages nobody can act on."
+              },
+              "help": {
+                "text": "Without `for:` the alert fires on the first evaluation where the expression is true. One slow scrape, a restart or a deploy blip is enough to wake someone, and the alert resolves before they open a laptop. Requiring the condition to persist is the cheapest way to remove pages nobody can act on.",
+                "markdown": "**Paging alert has no `for:` duration**\n\nWithout `for:` the alert fires on the first evaluation where the expression is true. One slow scrape, a restart or a deploy blip is enough to wake someone, and the alert resolves before they open a laptop. Requiring the condition to persist is the cheapest way to remove pages nobody can act on."
+              },
+              "helpUri": "https://github.com/mohammed-saaduddin-ansari/alert-linter#paging-missing-for",
+              "defaultConfiguration": {
+                "level": "error"
+              },
+              "properties": {
+                "tags": [
+                  "prometheus",
+                  "alerting",
+                  "on-call"
+                ]
+              }
+            },
+            {
+              "id": "short-for",
+              "name": "ShortFor",
+              "shortDescription": {
+                "text": "`for:` is shorter than the configured minimum"
+              },
+              "fullDescription": {
+                "text": "A `for:` shorter than an evaluation interval or two barely debounces anything: the alert flaps between firing and resolved, each flap can notify, and responders learn that the alert is noise."
+              },
+              "help": {
+                "text": "A `for:` shorter than an evaluation interval or two barely debounces anything: the alert flaps between firing and resolved, each flap can notify, and responders learn that the alert is noise.",
+                "markdown": "**`for:` is shorter than the configured minimum**\n\nA `for:` shorter than an evaluation interval or two barely debounces anything: the alert flaps between firing and resolved, each flap can notify, and responders learn that the alert is noise."
+              },
+              "helpUri": "https://github.com/mohammed-saaduddin-ansari/alert-linter#short-for",
+              "defaultConfiguration": {
+                "level": "warning"
+              },
+              "properties": {
+                "tags": [
+                  "prometheus",
+                  "alerting",
+                  "on-call"
+                ]
+              }
+            },
+            {
+              "id": "missing-runbook-url",
+              "name": "MissingRunbookUrl",
+              "shortDescription": {
+                "text": "No `runbook_url` annotation (or it is not a URL)"
+              },
+              "fullDescription": {
+                "text": "At 03:00 the responder needs to know what to check first and how to mitigate. A runbook link turns a page into a procedure and is the difference between a five-minute and a fifty-minute response. Error on paging alerts, warning otherwise."
+              },
+              "help": {
+                "text": "At 03:00 the responder needs to know what to check first and how to mitigate. A runbook link turns a page into a procedure and is the difference between a five-minute and a fifty-minute response. Error on paging alerts, warning otherwise.",
+                "markdown": "**No `runbook_url` annotation (or it is not a URL)**\n\nAt 03:00 the responder needs to know what to check first and how to mitigate. A runbook link turns a page into a procedure and is the difference between a five-minute and a fifty-minute response. Error on paging alerts, warning otherwise."
+              },
+              "helpUri": "https://github.com/mohammed-saaduddin-ansari/alert-linter#missing-runbook-url",
+              "defaultConfiguration": {
+                "level": "error"
+              },
+              "properties": {
+                "tags": [
+                  "prometheus",
+                  "alerting",
+                  "on-call"
+                ]
+              }
+            },
+            {
+              "id": "missing-summary",
+              "name": "MissingSummary",
+              "shortDescription": {
+                "text": "No `summary` annotation"
+              },
+              "fullDescription": {
+                "text": "The summary is the notification title in most pagers and chat tools. Without it the responder sees only an alert name and must open a dashboard to learn what is wrong and where. Error on paging alerts, warning otherwise."
+              },
+              "help": {
+                "text": "The summary is the notification title in most pagers and chat tools. Without it the responder sees only an alert name and must open a dashboard to learn what is wrong and where. Error on paging alerts, warning otherwise.",
+                "markdown": "**No `summary` annotation**\n\nThe summary is the notification title in most pagers and chat tools. Without it the responder sees only an alert name and must open a dashboard to learn what is wrong and where. Error on paging alerts, warning otherwise."
+              },
+              "helpUri": "https://github.com/mohammed-saaduddin-ansari/alert-linter#missing-summary",
+              "defaultConfiguration": {
+                "level": "error"
+              },
+              "properties": {
+                "tags": [
+                  "prometheus",
+                  "alerting",
+                  "on-call"
+                ]
+              }
+            },
+            {
+              "id": "missing-description",
+              "name": "MissingDescription",
+              "shortDescription": {
+                "text": "No `description` annotation"
+              },
+              "fullDescription": {
+                "text": "The description carries the context a summary cannot: what the threshold means, user impact and the likely blast radius. It helps the responder decide quickly whether to escalate."
+              },
+              "help": {
+                "text": "The description carries the context a summary cannot: what the threshold means, user impact and the likely blast radius. It helps the responder decide quickly whether to escalate.",
+                "markdown": "**No `description` annotation**\n\nThe description carries the context a summary cannot: what the threshold means, user impact and the likely blast radius. It helps the responder decide quickly whether to escalate."
+              },
+              "helpUri": "https://github.com/mohammed-saaduddin-ansari/alert-linter#missing-description",
+              "defaultConfiguration": {
+                "level": "warning"
+              },
+              "properties": {
+                "tags": [
+                  "prometheus",
+                  "alerting",
+                  "on-call"
+                ]
+              }
+            },
+            {
+              "id": "missing-severity",
+              "name": "MissingSeverity",
+              "shortDescription": {
+                "text": "No severity label"
+              },
+              "fullDescription": {
+                "text": "Routing decides who gets woken up from the severity label. An alert without one either falls through to a default receiver nobody watches or pages by accident."
+              },
+              "help": {
+                "text": "Routing decides who gets woken up from the severity label. An alert without one either falls through to a default receiver nobody watches or pages by accident.",
+                "markdown": "**No severity label**\n\nRouting decides who gets woken up from the severity label. An alert without one either falls through to a default receiver nobody watches or pages by accident."
+              },
+              "helpUri": "https://github.com/mohammed-saaduddin-ansari/alert-linter#missing-severity",
+              "defaultConfiguration": {
+                "level": "error"
+              },
+              "properties": {
+                "tags": [
+                  "prometheus",
+                  "alerting",
+                  "on-call"
+                ]
+              }
+            },
+            {
+              "id": "unknown-severity",
+              "name": "UnknownSeverity",
+              "shortDescription": {
+                "text": "Severity value is not in the allowed list"
+              },
+              "fullDescription": {
+                "text": "Values such as `crit`, `P1` or `High` slip past Alertmanager routes that match on exact values, so the alert silently goes to the wrong place or nowhere."
+              },
+              "help": {
+                "text": "Values such as `crit`, `P1` or `High` slip past Alertmanager routes that match on exact values, so the alert silently goes to the wrong place or nowhere.",
+                "markdown": "**Severity value is not in the allowed list**\n\nValues such as `crit`, `P1` or `High` slip past Alertmanager routes that match on exact values, so the alert silently goes to the wrong place or nowhere."
+              },
+              "helpUri": "https://github.com/mohammed-saaduddin-ansari/alert-linter#unknown-severity",
+              "defaultConfiguration": {
+                "level": "error"
+              },
+              "properties": {
+                "tags": [
+                  "prometheus",
+                  "alerting",
+                  "on-call"
+                ]
+              }
+            },
+            {
+              "id": "missing-owner-label",
+              "name": "MissingOwnerLabel",
+              "shortDescription": {
+                "text": "No team/owner label"
+              },
+              "fullDescription": {
+                "text": "An alert without an owner pages whoever holds the default route. Ownership labels let routing reach the team that can actually fix the problem and make alert-quality reviews possible per team."
+              },
+              "help": {
+                "text": "An alert without an owner pages whoever holds the default route. Ownership labels let routing reach the team that can actually fix the problem and make alert-quality reviews possible per team.",
+                "markdown": "**No team/owner label**\n\nAn alert without an owner pages whoever holds the default route. Ownership labels let routing reach the team that can actually fix the problem and make alert-quality reviews possible per team."
+              },
+              "helpUri": "https://github.com/mohammed-saaduddin-ansari/alert-linter#missing-owner-label",
+              "defaultConfiguration": {
+                "level": "warning"
+              },
+              "properties": {
+                "tags": [
+                  "prometheus",
+                  "alerting",
+                  "on-call"
+                ]
+              }
+            },
+            {
+              "id": "cause-based-paging",
+              "name": "CauseBasedPaging",
+              "shortDescription": {
+                "text": "Paging alert fires on a resource cause (CPU, memory, disk)"
+              },
+              "fullDescription": {
+                "text": "High CPU or memory is a cause, not a symptom: plenty of healthy systems run hot, and plenty of outages happen at 20% CPU. Paging on causes produces pages with no user impact and misses outages that do have it. Page on symptoms users feel (errors, latency, SLO burn rate) and send causes to a ticket or dashboard."
+              },
+              "help": {
+                "text": "High CPU or memory is a cause, not a symptom: plenty of healthy systems run hot, and plenty of outages happen at 20% CPU. Paging on causes produces pages with no user impact and misses outages that do have it. Page on symptoms users feel (errors, latency, SLO burn rate) and send causes to a ticket or dashboard.",
+                "markdown": "**Paging alert fires on a resource cause (CPU, memory, disk)**\n\nHigh CPU or memory is a cause, not a symptom: plenty of healthy systems run hot, and plenty of outages happen at 20% CPU. Paging on causes produces pages with no user impact and misses outages that do have it. Page on symptoms users feel (errors, latency, SLO burn rate) and send causes to a ticket or dashboard."
+              },
+              "helpUri": "https://github.com/mohammed-saaduddin-ansari/alert-linter#cause-based-paging",
+              "defaultConfiguration": {
+                "level": "warning"
+              },
+              "properties": {
+                "tags": [
+                  "prometheus",
+                  "alerting",
+                  "on-call"
+                ]
+              }
+            },
+            {
+              "id": "rate-window-too-short",
+              "name": "RateWindowTooShort",
+              "shortDescription": {
+                "text": "rate()/increase() window shorter than N x scrape interval"
+              },
+              "fullDescription": {
+                "text": "rate() needs at least two samples inside its window. With a window under about four scrape intervals, one missed or late scrape leaves too few samples, the expression returns nothing and the alert cannot fire, exactly when the target is struggling."
+              },
+              "help": {
+                "text": "rate() needs at least two samples inside its window. With a window under about four scrape intervals, one missed or late scrape leaves too few samples, the expression returns nothing and the alert cannot fire, exactly when the target is struggling.",
+                "markdown": "**rate()/increase() window shorter than N x scrape interval**\n\nrate() needs at least two samples inside its window. With a window under about four scrape intervals, one missed or late scrape leaves too few samples, the expression returns nothing and the alert cannot fire, exactly when the target is struggling."
+              },
+              "helpUri": "https://github.com/mohammed-saaduddin-ansari/alert-linter#rate-window-too-short",
+              "defaultConfiguration": {
+                "level": "error"
+              },
+              "properties": {
+                "tags": [
+                  "prometheus",
+                  "alerting",
+                  "on-call"
+                ]
+              }
+            },
+            {
+              "id": "high-cardinality-grouping",
+              "name": "HighCardinalityGrouping",
+              "shortDescription": {
+                "text": "Paging alert aggregates by a high-cardinality label"
+              },
+              "fullDescription": {
+                "text": "`sum by (pod)` on a paging alert turns one incident into one page per pod. A bad rollout across 40 pods should be one page with 40 pods in the description, not 40 pages. Warning only, because some per-instance pages are deliberate."
+              },
+              "help": {
+                "text": "`sum by (pod)` on a paging alert turns one incident into one page per pod. A bad rollout across 40 pods should be one page with 40 pods in the description, not 40 pages. Warning only, because some per-instance pages are deliberate.",
+                "markdown": "**Paging alert aggregates by a high-cardinality label**\n\n`sum by (pod)` on a paging alert turns one incident into one page per pod. A bad rollout across 40 pods should be one page with 40 pods in the description, not 40 pages. Warning only, because some per-instance pages are deliberate."
+              },
+              "helpUri": "https://github.com/mohammed-saaduddin-ansari/alert-linter#high-cardinality-grouping",
+              "defaultConfiguration": {
+                "level": "warning"
+              },
+              "properties": {
+                "tags": [
+                  "prometheus",
+                  "alerting",
+                  "on-call"
+                ]
+              }
+            },
+            {
+              "id": "duplicate-alert",
+              "name": "DuplicateAlert",
+              "shortDescription": {
+                "text": "Same alert name and identical labels defined twice"
+              },
+              "fullDescription": {
+                "text": "Two definitions with the same identity look like one alert to Alertmanager. Silences, inhibitions and grouping hit both, and responders see duplicate or flip-flopping notifications for what is really a copy-paste mistake."
+              },
+              "help": {
+                "text": "Two definitions with the same identity look like one alert to Alertmanager. Silences, inhibitions and grouping hit both, and responders see duplicate or flip-flopping notifications for what is really a copy-paste mistake.",
+                "markdown": "**Same alert name and identical labels defined twice**\n\nTwo definitions with the same identity look like one alert to Alertmanager. Silences, inhibitions and grouping hit both, and responders see duplicate or flip-flopping notifications for what is really a copy-paste mistake."
+              },
+              "helpUri": "https://github.com/mohammed-saaduddin-ansari/alert-linter#duplicate-alert",
+              "defaultConfiguration": {
+                "level": "error"
+              },
+              "properties": {
+                "tags": [
+                  "prometheus",
+                  "alerting",
+                  "on-call"
+                ]
+              }
+            },
+            {
+              "id": "unknown-directive",
+              "name": "UnknownDirective",
+              "shortDescription": {
+                "text": "Inline directive names a rule that does not exist"
+              },
+              "fullDescription": {
+                "text": "A misspelt disable comment does nothing, so the finding it was meant to silence keeps failing CI and people learn to ignore the linter."
+              },
+              "help": {
+                "text": "A misspelt disable comment does nothing, so the finding it was meant to silence keeps failing CI and people learn to ignore the linter.",
+                "markdown": "**Inline directive names a rule that does not exist**\n\nA misspelt disable comment does nothing, so the finding it was meant to silence keeps failing CI and people learn to ignore the linter."
+              },
+              "helpUri": "https://github.com/mohammed-saaduddin-ansari/alert-linter#unknown-directive",
+              "defaultConfiguration": {
+                "level": "warning"
+              },
+              "properties": {
+                "tags": [
+                  "prometheus",
+                  "alerting",
+                  "on-call"
+                ]
+              }
+            }
+          ]
+        }
+      },
+      "results": [
+        {
+          "ruleId": "paging-missing-for",
+          "ruleIndex": 1,
+          "level": "error",
+          "message": {
+            "text": "paging alert \"HostHighCPU\" (severity=critical) has no `for:`, so one bad evaluation pages someone. Suggestion: add `for: 5m` (or whatever the condition needs to be meaningful) so it must persist before anyone is woken"
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "examples/bad-rules.yaml",
+                  "uriBaseId": "%SRCROOT%"
+                },
+                "region": {
+                  "startLine": 8,
+                  "startColumn": 16
+                }
+              }
+            }
+          ]
+        },
+        {
+          "ruleId": "cause-based-paging",
+          "ruleIndex": 9,
+          "level": "warning",
+          "message": {
+            "text": "paging alert \"HostHighCPU\" (severity=critical) fires on a resource cause (node_cpu_seconds_total) rather than a symptom users feel. Suggestion: page on error rate, latency or SLO burn rate and send this one to a ticket (e.g. severity: warning); for disks, a predict_linear() time-to-full alert is a reasonable page"
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "examples/bad-rules.yaml",
+                  "uriBaseId": "%SRCROOT%"
+                },
+                "region": {
+                  "startLine": 9,
+                  "startColumn": 15
+                }
+              }
+            }
+          ]
+        },
+        {
+          "ruleId": "high-cardinality-grouping",
+          "ruleIndex": 11,
+          "level": "warning",
+          "message": {
+            "text": "paging alert \"HostHighCPU\" aggregates by (instance), so one incident fans out into one page per instance. Suggestion: page at the service level (e.g. `sum by (namespace, job)`) and list affected instances in the description or dashboard"
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "examples/bad-rules.yaml",
+                  "uriBaseId": "%SRCROOT%"
+                },
+                "region": {
+                  "startLine": 9,
+                  "startColumn": 15
+                }
+              }
+            }
+          ]
+        },
+        {
+          "ruleId": "missing-owner-label",
+          "ruleIndex": 8,
+          "level": "warning",
+          "message": {
+            "text": "alert \"HostHighCPU\" has no owner label (team or owner). Suggestion: add a team label on the rule or once on the rule group's `labels:` so routing reaches the people who can fix it"
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "examples/bad-rules.yaml",
+                  "uriBaseId": "%SRCROOT%"
+                },
+                "region": {
+                  "startLine": 10,
+                  "startColumn": 9
+                }
+              }
+            }
+          ]
+        },
+        {
+          "ruleId": "missing-description",
+          "ruleIndex": 5,
+          "level": "warning",
+          "message": {
+            "text": "paging alert \"HostHighCPU\" has no description annotation. Suggestion: add a few sentences on impact and what the threshold means"
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "examples/bad-rules.yaml",
+                  "uriBaseId": "%SRCROOT%"
+                },
+                "region": {
+                  "startLine": 12,
+                  "startColumn": 9
+                }
+              }
+            }
+          ]
+        },
+        {
+          "ruleId": "missing-runbook-url",
+          "ruleIndex": 3,
+          "level": "error",
+          "message": {
+            "text": "paging alert \"HostHighCPU\" has no runbook_url annotation. Suggestion: link a runbook that says what to check first and how to mitigate"
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "examples/bad-rules.yaml",
+                  "uriBaseId": "%SRCROOT%"
+                },
+                "region": {
+                  "startLine": 12,
+                  "startColumn": 9
+                }
+              }
+            }
+          ]
+        },
+        {
+          "ruleId": "cause-based-paging",
+          "ruleIndex": 9,
+          "level": "warning",
+          "message": {
+            "text": "paging alert \"HostOutOfMemory\" (severity=page) fires on a resource cause (node_memory_MemAvailable_bytes, node_memory_MemTotal_bytes) rather than a symptom users feel. Suggestion: page on error rate, latency or SLO burn rate and send this one to a ticket (e.g. severity: warning); for disks, a predict_linear() time-to-full alert is a reasonable page"
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "examples/bad-rules.yaml",
+                  "uriBaseId": "%SRCROOT%"
+                },
+                "region": {
+                  "startLine": 18,
+                  "startColumn": 15
+                }
+              }
+            }
+          ]
+        },
+        {
+          "ruleId": "short-for",
+          "ruleIndex": 2,
+          "level": "warning",
+          "message": {
+            "text": "alert \"HostOutOfMemory\" has `for: 15s`, shorter than the 1m minimum, so brief blips will fire and resolve repeatedly. Suggestion: raise `for:` to at least 1m, or lower min_for in the config if this really must be fast"
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "examples/bad-rules.yaml",
+                  "uriBaseId": "%SRCROOT%"
+                },
+                "region": {
+                  "startLine": 19,
+                  "startColumn": 14
+                }
+              }
+            }
+          ]
+        },
+        {
+          "ruleId": "missing-runbook-url",
+          "ruleIndex": 3,
+          "level": "warning",
+          "message": {
+            "text": "alert \"HostOutOfMemory\" has runbook_url \"wiki/HostOutOfMemory\", which is not an absolute http(s) URL. Suggestion: use a full URL so it is clickable from the pager and chat notification"
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "examples/bad-rules.yaml",
+                  "uriBaseId": "%SRCROOT%"
+                },
+                "region": {
+                  "startLine": 26,
+                  "startColumn": 24
+                }
+              }
+            }
+          ]
+        },
+        {
+          "ruleId": "rate-window-too-short",
+          "ruleIndex": 10,
+          "level": "error",
+          "message": {
+            "text": "\"APIHighErrorRate\": rate(http_requests_total{code=~\"5..\",job=\"api\"}[30s]), rate(http_requests_total{job=\"api\"}[30s]) use windows shorter than 4 x the 1m scrape interval (4m); one missed scrape leaves too few samples and the expression returns nothing. Suggestion: use a window of at least 4m, or set scrape_interval in the config if your targets are scraped faster"
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "examples/bad-rules.yaml",
+                  "uriBaseId": "%SRCROOT%"
+                },
+                "region": {
+                  "startLine": 33,
+                  "startColumn": 15
+                }
+              }
+            }
+          ]
+        },
+        {
+          "ruleId": "unknown-severity",
+          "ruleIndex": 7,
+          "level": "error",
+          "message": {
+            "text": "alert \"APIHighErrorRate\" has severity \"crit\", which routing does not know about. Suggestion: use one of: critical, page, warning, info, none"
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "examples/bad-rules.yaml",
+                  "uriBaseId": "%SRCROOT%"
+                },
+                "region": {
+                  "startLine": 39,
+                  "startColumn": 21
+                }
+              }
+            }
+          ]
+        },
+        {
+          "ruleId": "high-cardinality-grouping",
+          "ruleIndex": 11,
+          "level": "warning",
+          "message": {
+            "text": "paging alert \"PodCrashLooping\" aggregates by (pod), so one incident fans out into one page per pod. Suggestion: page at the service level (e.g. `sum by (namespace, job)`) and list affected pods in the description or dashboard"
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "examples/bad-rules.yaml",
+                  "uriBaseId": "%SRCROOT%"
+                },
+                "region": {
+                  "startLine": 48,
+                  "startColumn": 15
+                }
+              }
+            }
+          ]
+        },
+        {
+          "ruleId": "missing-severity",
+          "ruleIndex": 6,
+          "level": "error",
+          "message": {
+            "text": "alert \"APILatencyHigh\" has no severity label, so routing cannot tell whether it should page. Suggestion: add `severity:` with one of: critical, page, warning, info, none"
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "examples/bad-rules.yaml",
+                  "uriBaseId": "%SRCROOT%"
+                },
+                "region": {
+                  "startLine": 62,
+                  "startColumn": 9
+                }
+              }
+            }
+          ]
+        },
+        {
+          "ruleId": "duplicate-alert",
+          "ruleIndex": 12,
+          "level": "error",
+          "message": {
+            "text": "alert \"PodCrashLooping\" is defined again with identical labels (first at examples/bad-rules.yaml:47). Suggestion: Alertmanager cannot tell the two apart, so silences, inhibitions and grouping act on both; delete one or give them distinct labels such as different severity tiers"
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "examples/bad-rules.yaml",
+                  "uriBaseId": "%SRCROOT%"
+                },
+                "region": {
+                  "startLine": 70,
+                  "startColumn": 16
+                }
+              }
+            }
+          ]
+        },
+        {
+          "ruleId": "invalid-rule",
+          "ruleIndex": 0,
+          "level": "error",
+          "message": {
+            "text": "\"OrderQueueBacklog\" has an expression that does not parse: 1:39: parse error: unclosed left parenthesis"
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "examples/bad-rules.yaml",
+                  "uriBaseId": "%SRCROOT%"
+                },
+                "region": {
+                  "startLine": 83,
+                  "startColumn": 15
+                }
+              }
+            }
+          ]
+        },
+        {
+          "ruleId": "rate-window-too-short",
+          "ruleIndex": 10,
+          "level": "error",
+          "message": {
+            "text": "\"job:http_requests:rate1m\": rate(http_requests_total[1m]) uses a window shorter than 4 x the 1m scrape interval (4m); one missed scrape leaves too few samples and the expression returns nothing. Suggestion: use a window of at least 4m, or set scrape_interval in the config if your targets are scraped faster"
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "examples/bad-rules.yaml",
+                  "uriBaseId": "%SRCROOT%"
+                },
+                "region": {
+                  "startLine": 97,
+                  "startColumn": 15
+                }
+              }
+            }
+          ]
+        },
+        {
+          "ruleId": "unknown-directive",
+          "ruleIndex": 13,
+          "level": "warning",
+          "message": {
+            "text": "directive disables unknown rule \"missing-sumary\", so it has no effect. Suggestion: check the spelling against `alert-linter --list-rules`"
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "examples/bad-rules.yaml",
+                  "uriBaseId": "%SRCROOT%"
+                },
+                "region": {
+                  "startLine": 99,
+                  "startColumn": 7
+                }
+              }
+            }
+          ]
+        },
+        {
+          "ruleId": "missing-summary",
+          "ruleIndex": 4,
+          "level": "warning",
+          "message": {
+            "text": "alert \"CertificateExpiringSoon\" has no summary annotation. Suggestion: add a one-line, templated summary such as `{{ $labels.job }} is serving 5xx to {{ $value | humanizePercentage }} of requests`"
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "examples/bad-rules.yaml",
+                  "uriBaseId": "%SRCROOT%"
+                },
+                "region": {
+                  "startLine": 106,
+                  "startColumn": 9
+                }
+              }
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

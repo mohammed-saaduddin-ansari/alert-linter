@@ -1,0 +1,18 @@
+RULE                       DEFAULT  SUMMARY
+invalid-rule               error    Rule file or rule cannot be parsed
+paging-missing-for         error    Paging alert has no for: duration
+short-for                  warning  for: is shorter than the configured minimum
+missing-runbook-url        error    No runbook_url annotation (or it is not a URL)
+missing-summary            error    No summary annotation
+missing-description        warning  No description annotation
+missing-severity           error    No severity label
+unknown-severity           error    Severity value is not in the allowed list
+missing-owner-label        warning  No team/owner label
+cause-based-paging         warning  Paging alert fires on a resource cause (CPU, memory, disk)
+rate-window-too-short      error    rate()/increase() window shorter than N x scrape interval
+high-cardinality-grouping  warning  Paging alert aggregates by a high-cardinality label
+duplicate-alert            error    Same alert name and identical labels defined twice
+unknown-directive          warning  Inline directive names a rule that does not exist
+
+missing-runbook-url and missing-summary are errors on paging alerts and warnings otherwise.
+Docs: https://github.com/mohammed-saaduddin-ansari/alert-linter#rules

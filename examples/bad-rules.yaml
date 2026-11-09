@@ -1,0 +1,108 @@
+# Deliberately bad alerting rules. Each alert shows one or more on-call
+# anti-patterns that alert-linter reports. Do not deploy these.
+groups:
+  - name: node
+    rules:
+      # Pages on a cause (CPU), fires on the first evaluation, has no owner,
+      # no runbook and no description.
+      - alert: HostHighCPU
+        expr: 100 - (avg by (instance) (rate(node_cpu_seconds_total{mode="idle"}[5m])) * 100) > 90
+        labels:
+          severity: critical
+        annotations:
+          summary: "CPU above 90% on {{ $labels.instance }}"
+
+      # Memory is a cause too; 15s is shorter than one evaluation interval,
+      # and the runbook link is not clickable from a pager.
+      - alert: HostOutOfMemory
+        expr: node_memory_MemAvailable_bytes / node_memory_MemTotal_bytes < 0.1
+        for: 15s
+        labels:
+          severity: page
+          team: platform
+        annotations:
+          summary: "Less than 10% memory available on {{ $labels.instance }}"
+          description: "The host may start swapping or OOM-killing processes."
+          runbook_url: wiki/HostOutOfMemory
+
+  - name: api
+    rules:
+      # A good symptom, ruined by a 30s rate window and a severity value
+      # that no Alertmanager route matches.
+      - alert: APIHighErrorRate
+        expr: |
+          sum(rate(http_requests_total{job="api", code=~"5.."}[30s]))
+            /
+          sum(rate(http_requests_total{job="api"}[30s])) > 0.05
+        for: 5m
+        labels:
+          severity: crit
+          team: payments
+        annotations:
+          summary: "API is returning 5xx for more than 5% of requests"
+          description: "Users are seeing errors on checkout."
+          runbook_url: https://runbooks.example.com/api/high-error-rate
+
+      # One page per pod: a bad rollout across 40 pods is 40 pages.
+      - alert: PodCrashLooping
+        expr: sum by (namespace, pod) (increase(kube_pod_container_status_restarts_total{namespace="payments"}[15m])) > 3
+        for: 10m
+        labels:
+          severity: critical
+          team: payments
+        annotations:
+          summary: "Pod {{ $labels.pod }} is restarting repeatedly"
+          description: "More than 3 restarts in 15 minutes."
+          runbook_url: https://runbooks.example.com/k8s/crashloop
+
+      # Nobody knows whether this should page.
+      - alert: APILatencyHigh
+        expr: histogram_quantile(0.99, sum by (le) (rate(http_request_duration_seconds_bucket{job="api"}[5m]))) > 1
+        for: 10m
+        labels:
+          team: payments
+        annotations:
+          summary: "API p99 latency is above 1s"
+          description: "Checkout is slow for the slowest 1% of requests."
+          runbook_url: https://runbooks.example.com/api/latency
+
+      # Copy-pasted and edited, but the name and labels are still identical.
+      - alert: PodCrashLooping
+        expr: sum by (namespace) (increase(kube_pod_container_status_restarts_total{namespace="payments"}[15m])) > 3
+        for: 10m
+        labels:
+          severity: critical
+          team: payments
+        annotations:
+          summary: "Pods in {{ $labels.namespace }} are restarting repeatedly"
+          description: "More than 3 restarts in 15 minutes."
+          runbook_url: https://runbooks.example.com/k8s/crashloop
+
+      # Missing closing parenthesis: Prometheus would refuse the whole file.
+      - alert: OrderQueueBacklog
+        expr: sum(queue_depth{queue="orders"} > 1000
+        for: 10m
+        labels:
+          severity: warning
+          team: payments
+        annotations:
+          summary: "Order queue backlog"
+          description: "More than 1000 orders waiting."
+          runbook_url: https://runbooks.example.com/orders/backlog
+
+  - name: recordings
+    rules:
+      # Recording rules feed alerts, so a too-short window here breaks them too.
+      - record: job:http_requests:rate1m
+        expr: sum by (job) (rate(http_requests_total[1m]))
+
+      # alert-linter: disable=missing-sumary -- typo, so this suppresses nothing
+      - alert: CertificateExpiringSoon
+        expr: (probe_ssl_earliest_cert_expiry - time()) / 86400 < 14
+        for: 1h
+        labels:
+          severity: warning
+          team: platform
+        annotations:
+          description: "A TLS certificate expires within 14 days."
+          runbook_url: https://runbooks.example.com/tls/renew

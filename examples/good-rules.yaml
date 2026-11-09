@@ -1,0 +1,109 @@
+# Symptom-based, well-annotated alerting rules. alert-linter reports no
+# findings for this file with the default configuration.
+groups:
+  - name: api-slo
+    # Group-level labels apply to every rule in the group.
+    labels:
+      team: payments
+    rules:
+      - record: job:http_requests_errors:ratio_rate5m
+        expr: sum by (job) (rate(http_requests_total{code=~"5.."}[5m])) / sum by (job) (rate(http_requests_total[5m]))
+      - record: job:http_requests_errors:ratio_rate30m
+        expr: sum by (job) (rate(http_requests_total{code=~"5.."}[30m])) / sum by (job) (rate(http_requests_total[30m]))
+      - record: job:http_requests_errors:ratio_rate1h
+        expr: sum by (job) (rate(http_requests_total{code=~"5.."}[1h])) / sum by (job) (rate(http_requests_total[1h]))
+      - record: job:http_requests_errors:ratio_rate6h
+        expr: sum by (job) (rate(http_requests_total{code=~"5.."}[6h])) / sum by (job) (rate(http_requests_total[6h]))
+
+      # Multi-window, multi-burn-rate alert for a 99.9% availability SLO.
+      # Fast burn (14.4x over 1h, confirmed by the 5m window) pages.
+      - alert: APIErrorBudgetFastBurn
+        expr: |
+          job:http_requests_errors:ratio_rate1h{job="api"} > (14.4 * 0.001)
+          and
+          job:http_requests_errors:ratio_rate5m{job="api"} > (14.4 * 0.001)
+        for: 2m
+        labels:
+          severity: critical
+        annotations:
+          summary: "API is burning its 30-day error budget more than 14x too fast"
+          description: "At this rate about 2% of the monthly error budget is gone within an hour. Users are seeing 5xx responses."
+          runbook_url: https://runbooks.example.com/api/error-budget-burn
+
+      # Slow burn (6x over 6h, confirmed by 30m) opens a ticket instead of paging.
+      - alert: APIErrorBudgetSlowBurn
+        expr: |
+          job:http_requests_errors:ratio_rate6h{job="api"} > (6 * 0.001)
+          and
+          job:http_requests_errors:ratio_rate30m{job="api"} > (6 * 0.001)
+        for: 15m
+        labels:
+          severity: warning
+        annotations:
+          summary: "API is steadily burning its error budget 6x too fast"
+          description: "Not urgent, but the budget runs out in about five days at this rate."
+          runbook_url: https://runbooks.example.com/api/error-budget-burn
+
+      - alert: APILatencyP99High
+        expr: histogram_quantile(0.99, sum by (job, le) (rate(http_request_duration_seconds_bucket{job="api"}[5m]))) > 0.5
+        for: 10m
+        labels:
+          severity: critical
+        annotations:
+          summary: "API p99 latency is {{ $value | humanizeDuration }}, above the 500ms objective"
+          description: "The slowest 1% of checkout requests are taking longer than the latency SLO allows."
+          runbook_url: https://runbooks.example.com/api/latency
+
+  - name: node
+    labels:
+      team: platform
+    rules:
+      # A cause, but one with certain and imminent user impact: a fair page.
+      - alert: HostDiskWillFillIn4Hours
+        expr: |
+          predict_linear(node_filesystem_avail_bytes{fstype!~"tmpfs|overlay"}[6h], 4 * 3600) < 0
+          and on (instance, device, mountpoint)
+          node_filesystem_readonly == 0
+        for: 30m
+        labels:
+          severity: critical
+        annotations:
+          summary: "{{ $labels.mountpoint }} on {{ $labels.instance }} will be full within 4 hours"
+          description: "Based on the last 6 hours of growth. Writes will fail when it fills."
+          runbook_url: https://runbooks.example.com/node/disk-filling
+
+      # Sustained high CPU is worth knowing about, but goes to a ticket.
+      - alert: HostHighCPU
+        expr: 1 - avg by (instance) (rate(node_cpu_seconds_total{mode="idle"}[5m])) > 0.9
+        for: 30m
+        labels:
+          severity: warning
+        annotations:
+          summary: "CPU above 90% on {{ $labels.instance }} for 30 minutes"
+          description: "Check for runaway processes or plan capacity; no user impact implied."
+          runbook_url: https://runbooks.example.com/node/high-cpu
+
+      # Every etcd member matters for quorum, so one page per member is intended.
+      # alert-linter: disable=high-cardinality-grouping -- per-member paging is deliberate
+      - alert: EtcdMemberDown
+        expr: max by (instance) (up{job="etcd"}) == 0
+        for: 3m
+        labels:
+          severity: critical
+        annotations:
+          summary: "etcd member {{ $labels.instance }} is down"
+          description: "The cluster loses quorum if a second member fails."
+          runbook_url: https://runbooks.example.com/etcd/member-down
+
+  - name: meta
+    rules:
+      # Always fires; a dead man's switch proves the pipeline works end to end.
+      - alert: Watchdog
+        expr: vector(1)
+        labels:
+          severity: none
+          team: platform
+        annotations:
+          summary: "Alerting pipeline heartbeat"
+          description: "This alert always fires. If the external receiver stops seeing it, alerting is broken."
+          runbook_url: https://runbooks.example.com/meta/watchdog

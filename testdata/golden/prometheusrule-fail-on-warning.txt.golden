@@ -1,0 +1,8 @@
+examples/prometheusrule.yaml:14:17: warning: paging alert "CheckoutContainerMemoryHigh" (severity=critical) fires on a resource cause (container_memory_working_set_bytes) rather than a symptom users feel [cause-based-paging]
+    hint: page on error rate, latency or SLO burn rate and send this one to a ticket (e.g. severity: warning); for disks, a predict_linear() time-to-full alert is a reasonable page
+examples/prometheusrule.yaml:14:17: warning: paging alert "CheckoutContainerMemoryHigh" aggregates by (pod), so one incident fans out into one page per pod [high-cardinality-grouping]
+    hint: page at the service level (e.g. `sum by (namespace, job)`) and list affected pods in the description or dashboard
+examples/prometheusrule.yaml:18:11: warning: paging alert "CheckoutContainerMemoryHigh" has no description annotation [missing-description]
+    hint: add a few sentences on impact and what the threshold means
+
+3 findings (0 errors, 3 warnings) in 1 file; checked 1 alert and 0 recording rules

@@ -1,0 +1,33 @@
+# Example configuration. Copy it to .alert-linter.yaml in the directory you
+# run alert-linter from, or pass --config. Every key is optional; omitted
+# keys keep the built-in defaults shown in the README.
+
+# Your global scrape interval. rate()/increase() windows must cover at least
+# rate_window_factor scrapes.
+scrape_interval: 15s
+rate_window_factor: 4
+
+# Anything shorter than this is reported by short-for.
+min_for: 2m
+
+# Which severity values wake a human, and which values routing understands.
+paging_severities: [critical, page]
+allowed_severities: [critical, page, warning, info, none]
+severity_label: severity
+
+# At least one of these labels must be set (on the rule or its group).
+owner_labels: [team, owner]
+
+# by(...) labels that fan one incident out into many pages.
+high_cardinality_labels: [pod, container, instance, path, user_id]
+
+# Replace the built-in resource-metric patterns (regular expressions).
+# cause_metrics: ['^node_cpu_', '^container_memory_']
+
+# Per-rule settings: off, error, warning or info.
+rules:
+  cause-based-paging: error   # this team treats cause-based pages as blocking
+  missing-description: off
+
+# Lowest severity that makes the exit code non-zero: error, warning, info, never.
+fail_on: error

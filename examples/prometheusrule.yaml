@@ -1,0 +1,20 @@
+# The same checks work on prometheus-operator PrometheusRule manifests.
+apiVersion: monitoring.coreos.com/v1
+kind: PrometheusRule
+metadata:
+  name: checkout
+  namespace: payments
+spec:
+  groups:
+    - name: checkout
+      labels:
+        team: payments
+      rules:
+        - alert: CheckoutContainerMemoryHigh
+          expr: max by (pod) (container_memory_working_set_bytes{namespace="payments", container="checkout"}) > 2e9
+          for: 5m
+          labels:
+            severity: critical
+          annotations:
+            summary: "Checkout pod {{ $labels.pod }} is using over 2GB of memory"
+            runbook_url: https://runbooks.example.com/checkout/memory

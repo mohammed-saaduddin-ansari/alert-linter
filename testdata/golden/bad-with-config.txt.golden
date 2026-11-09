@@ -1,0 +1,33 @@
+examples/bad-rules.yaml:8:16: error: paging alert "HostHighCPU" (severity=critical) has no `for:`, so one bad evaluation pages someone [paging-missing-for]
+    hint: add `for: 5m` (or whatever the condition needs to be meaningful) so it must persist before anyone is woken
+examples/bad-rules.yaml:9:15: error: paging alert "HostHighCPU" (severity=critical) fires on a resource cause (node_cpu_seconds_total) rather than a symptom users feel [cause-based-paging]
+    hint: page on error rate, latency or SLO burn rate and send this one to a ticket (e.g. severity: warning); for disks, a predict_linear() time-to-full alert is a reasonable page
+examples/bad-rules.yaml:9:15: warning: paging alert "HostHighCPU" aggregates by (instance), so one incident fans out into one page per instance [high-cardinality-grouping]
+    hint: page at the service level (e.g. `sum by (namespace, job)`) and list affected instances in the description or dashboard
+examples/bad-rules.yaml:10:9: warning: alert "HostHighCPU" has no owner label (team or owner) [missing-owner-label]
+    hint: add a team label on the rule or once on the rule group's `labels:` so routing reaches the people who can fix it
+examples/bad-rules.yaml:12:9: error: paging alert "HostHighCPU" has no runbook_url annotation [missing-runbook-url]
+    hint: link a runbook that says what to check first and how to mitigate
+examples/bad-rules.yaml:18:15: error: paging alert "HostOutOfMemory" (severity=page) fires on a resource cause (node_memory_MemAvailable_bytes, node_memory_MemTotal_bytes) rather than a symptom users feel [cause-based-paging]
+    hint: page on error rate, latency or SLO burn rate and send this one to a ticket (e.g. severity: warning); for disks, a predict_linear() time-to-full alert is a reasonable page
+examples/bad-rules.yaml:19:14: warning: alert "HostOutOfMemory" has `for: 15s`, shorter than the 2m minimum, so brief blips will fire and resolve repeatedly [short-for]
+    hint: raise `for:` to at least 2m, or lower min_for in the config if this really must be fast
+examples/bad-rules.yaml:26:24: warning: alert "HostOutOfMemory" has runbook_url "wiki/HostOutOfMemory", which is not an absolute http(s) URL [missing-runbook-url]
+    hint: use a full URL so it is clickable from the pager and chat notification
+examples/bad-rules.yaml:33:15: error: "APIHighErrorRate": rate(http_requests_total{code=~"5..",job="api"}[30s]), rate(http_requests_total{job="api"}[30s]) use windows shorter than 4 x the 15s scrape interval (1m); one missed scrape leaves too few samples and the expression returns nothing [rate-window-too-short]
+    hint: use a window of at least 1m, or set scrape_interval in the config if your targets are scraped faster
+examples/bad-rules.yaml:39:21: error: alert "APIHighErrorRate" has severity "crit", which routing does not know about [unknown-severity]
+    hint: use one of: critical, page, warning, info, none
+examples/bad-rules.yaml:48:15: warning: paging alert "PodCrashLooping" aggregates by (pod), so one incident fans out into one page per pod [high-cardinality-grouping]
+    hint: page at the service level (e.g. `sum by (namespace, job)`) and list affected pods in the description or dashboard
+examples/bad-rules.yaml:62:9: error: alert "APILatencyHigh" has no severity label, so routing cannot tell whether it should page [missing-severity]
+    hint: add `severity:` with one of: critical, page, warning, info, none
+examples/bad-rules.yaml:70:16: error: alert "PodCrashLooping" is defined again with identical labels (first at examples/bad-rules.yaml:47) [duplicate-alert]
+    hint: Alertmanager cannot tell the two apart, so silences, inhibitions and grouping act on both; delete one or give them distinct labels such as different severity tiers
+examples/bad-rules.yaml:83:15: error: "OrderQueueBacklog" has an expression that does not parse: 1:39: parse error: unclosed left parenthesis [invalid-rule]
+examples/bad-rules.yaml:99:7: warning: directive disables unknown rule "missing-sumary", so it has no effect [unknown-directive]
+    hint: check the spelling against `alert-linter --list-rules`
+examples/bad-rules.yaml:106:9: warning: alert "CertificateExpiringSoon" has no summary annotation [missing-summary]
+    hint: add a one-line, templated summary such as `{{ $labels.job }} is serving 5xx to {{ $value | humanizePercentage }} of requests`
+
+16 findings (9 errors, 7 warnings) in 1 file; checked 8 alerts and 1 recording rule
