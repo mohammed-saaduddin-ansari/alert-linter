@@ -1,27 +1,12 @@
 # alert-linter
 
-A fast, single-binary linter for Prometheus alerting rules that catches the on-call anti-patterns behind noisy, unactionable pages.
+A single-binary linter for Prometheus alerting rules. It catches the authoring mistakes behind noisy, unactionable pages: no `for:`, no runbook, no owner, paging on CPU instead of user impact, one page per pod.
 
 [![ci](https://github.com/mohammed-saaduddin-ansari/alert-linter/actions/workflows/ci.yml/badge.svg)](https://github.com/mohammed-saaduddin-ansari/alert-linter/actions/workflows/ci.yml)
 
-`promtool check rules` tells you whether Prometheus can *load* a rule. It does not tell you whether the rule will wake someone at 03:00 for a CPU spike nobody can act on, page forty times for one bad rollout, or arrive with no runbook. `alert-linter` checks for those things in CI, before the rule ships, with output for humans (text), scripts (JSON) and GitHub code scanning (SARIF).
+## Why I built this
 
-The goal is **fewer, better pages**: every page should be urgent, actionable, owned and explained.
-
-A clean-room reference implementation of a pattern I've worked with in production; no employer or client code.
-
-## Contents
-
-- [Quickstart](#quickstart)
-- [Example output](#example-output)
-- [Rules](#rules)
-- [Configuration](#configuration)
-- [Inline directives](#inline-directives)
-- [GitHub Actions and code scanning](#github-actions-and-code-scanning)
-- [How it works](#how-it-works)
-- [Design decisions and trade-offs](#design-decisions-and-trade-offs)
-- [Limitations](#limitations)
-- [Roadmap](#roadmap)
+`promtool check rules` tells you whether Prometheus can load a rule. It does not tell you that the rule will wake someone at 03:00 for a CPU spike nobody can act on, page forty times for one bad rollout, or arrive with no runbook. Those mistakes are cheap to catch in review and expensive to find on call, and reviewers tend to read the PromQL rather than its on-call consequence. This is a clean-room reference implementation of a pattern I have worked with: make the paging standard explicit and check it in CI. No employer or client code.
 
 ## Quickstart
 
@@ -30,21 +15,19 @@ Needs Go 1.26.7 or newer.
 ```sh
 git clone https://github.com/mohammed-saaduddin-ansari/alert-linter
 cd alert-linter
-make build                               # -> bin/alert-linter
+make build                                # -> bin/alert-linter
 
-bin/alert-linter examples/bad-rules.yaml # 18 findings, exit code 1
+bin/alert-linter examples/bad-rules.yaml  # 18 findings, exit code 1
 bin/alert-linter examples/good-rules.yaml # 0 findings, exit code 0
 bin/alert-linter --list-rules
 ```
 
-Or install it straight onto your `PATH`:
+Or install it onto your `PATH`:
 
 ```sh
 go install github.com/mohammed-saaduddin-ansari/alert-linter/cmd/alert-linter@main
 alert-linter path/to/rules/
 ```
-
-Usage:
 
 ```text
 alert-linter [flags] <file-or-directory>...
@@ -57,13 +40,13 @@ alert-linter [flags] <file-or-directory>...
   --version         print the version and exit
 ```
 
-Exit codes: `0` no findings at or above `--fail-on`; `1` findings at or above `--fail-on`; `2` usage error, unreadable file or invalid config.
+Exit codes: `0` nothing at or above `--fail-on`, `1` findings at or above `--fail-on`, `2` usage error, unreadable file or invalid config. Keeping 1 and 2 apart means a broken config never looks like "your rules have problems".
 
-Inputs can be plain Prometheus rule files or Kubernetes `PrometheusRule` manifests (prometheus-operator), including multi-document YAML. Directories are walked recursively for `*.yml`/`*.yaml` files that contain rule groups.
+Inputs can be plain Prometheus rule files or Kubernetes `PrometheusRule` manifests, including multi-document YAML. Directories are walked recursively for `*.yml`/`*.yaml` files that contain rule groups.
 
 ## Example output
 
-Selected findings from `bin/alert-linter examples/bad-rules.yaml` (the full output is in [`testdata/golden/bad.txt.golden`](testdata/golden/bad.txt.golden)):
+Selected findings from `bin/alert-linter examples/bad-rules.yaml` (full output in [`testdata/golden/bad.txt.golden`](testdata/golden/bad.txt.golden)):
 
 ```text
 examples/bad-rules.yaml:8:16: error: paging alert "HostHighCPU" (severity=critical) has no `for:`, so one bad evaluation pages someone [paging-missing-for]
@@ -86,122 +69,99 @@ examples/bad-rules.yaml:83:15: error: "OrderQueueBacklog" has an expression that
 18 findings (8 errors, 10 warnings) in 1 file; checked 8 alerts and 1 recording rule
 ```
 
-Each line is `file:line:column`, so it is clickable in most editors and terminals. The same findings as [JSON](testdata/golden/bad.json.golden) and [SARIF](testdata/golden/bad.sarif.golden) are checked in as golden files. The good sample produces:
-
-```text
-0 findings (0 errors, 0 warnings) in 1 file; checked 7 alerts and 4 recording rules
-```
+Positions are `file:line:column`, so they are clickable in most editors. The same findings as [JSON](testdata/golden/bad.json.golden) and [SARIF](testdata/golden/bad.sarif.golden) are checked in as golden files. The good sample gives `0 findings (0 errors, 0 warnings) in 1 file; checked 7 alerts and 4 recording rules`.
 
 ## Rules
 
-An alert is **paging** when its `severity` label is in `paging_severities` (default `critical`, `page`). Several rules only apply to paging alerts, or are stricter for them, because a bad page costs far more than a bad ticket.
-
-| Rule | Default | Applies to |
-| --- | --- | --- |
-| [`invalid-rule`](#invalid-rule) | error | everything |
-| [`paging-missing-for`](#paging-missing-for) | error | paging alerts |
-| [`short-for`](#short-for) | warning | alerts |
-| [`missing-runbook-url`](#missing-runbook-url) | error on paging, warning otherwise | alerts |
-| [`missing-summary`](#missing-summary) | error on paging, warning otherwise | alerts |
-| [`missing-description`](#missing-description) | warning | alerts |
-| [`missing-severity`](#missing-severity) | error | alerts |
-| [`unknown-severity`](#unknown-severity) | error | alerts |
-| [`missing-owner-label`](#missing-owner-label) | warning | alerts |
-| [`cause-based-paging`](#cause-based-paging) | warning | paging alerts |
-| [`rate-window-too-short`](#rate-window-too-short) | error | alerts and recording rules |
-| [`high-cardinality-grouping`](#high-cardinality-grouping) | warning | paging alerts |
-| [`duplicate-alert`](#duplicate-alert) | error | alerts, across all files |
-| [`unknown-directive`](#unknown-directive) | warning | inline directives |
-
-The SARIF output links each rule to its section below, so code scanning reviewers land on the explanation.
+An alert is **paging** when its `severity` label is in `paging_severities` (default `critical`, `page`). Several rules only apply to paging alerts, or are stricter for them, because a bad page costs far more than a bad ticket. `bin/alert-linter --list-rules` prints the same list with default severities. The SARIF output links each rule to its section here.
 
 ### invalid-rule
 
-Broken YAML, PromQL that does not parse, invalid durations, a rule with no `expr`, or with both or neither of `alert` and `record`, and unknown rule fields such as `anotations:`.
+Error. Broken YAML, PromQL that does not parse, invalid durations, a rule with no `expr`, with both or neither of `alert` and `record`, or with unknown fields such as `anotations:`.
 
-**Why it matters on call:** Prometheus rejects the whole rule file when one rule is invalid. On a reload it keeps running the old rules, so the new or fixed alerts in that file never go live, and nobody notices until the incident one of them should have caught.
+Prometheus rejects the whole file when one rule is invalid. On reload it keeps running the old rules, so the new or fixed alerts in that file never go live, and nobody notices until the incident one of them should have caught.
 
 ### paging-missing-for
 
-A paging alert with no `for:`, or with `for: 0s`.
+Error. A paging alert with no `for:`, or `for: 0s`.
 
-**Why it matters on call:** without `for:` the alert fires on the first evaluation where the expression is true. One slow scrape, a pod restart or a deploy blip is enough to wake someone, and the alert has often resolved before they open a laptop. Requiring the condition to persist is the cheapest way to remove pages nobody can act on.
+Without `for:` the alert fires on the first evaluation where the expression is true. One slow scrape, pod restart or deploy blip wakes someone, and the alert has often resolved before they open a laptop.
 
 ### short-for
 
-`for:` is set but shorter than `min_for` (default `1m`).
+Warning. `for:` is set but shorter than `min_for` (default `1m`).
 
-**Why it matters on call:** a `for:` shorter than one or two evaluation intervals barely debounces anything. The alert flaps between firing and resolved, each flap can notify, and responders learn that the alert is noise. That learned distrust is how a real page gets ignored.
+A `for:` under one or two evaluation intervals barely debounces anything. The alert flaps, each flap can notify, and responders learn it is noise. That learned distrust is how a real page gets ignored.
 
 ### missing-runbook-url
 
-No `runbook_url` annotation, or one that is not an absolute `http(s)` URL (templated values such as `{{ $externalURL }}/...` are accepted). Error on paging alerts, warning otherwise.
+Error on paging alerts, warning otherwise. No `runbook_url` annotation, or one that is not an absolute `http(s)` URL. Templated values such as `{{ $externalURL }}/...` are accepted.
 
-**Why it matters on call:** at 03:00 the responder needs to know what to check first and how to mitigate. A runbook turns a page into a procedure, makes the alert usable by someone who did not write it, and shortens time to mitigation. A relative path like `wiki/HostOutOfMemory` is not clickable from a phone.
+At 03:00 the responder needs to know what to check first and how to mitigate. A runbook makes the alert usable by someone who did not write it. A relative path like `wiki/HostOutOfMemory` is not clickable from a phone.
 
 ### missing-summary
 
-No `summary` annotation. Error on paging alerts, warning otherwise.
+Error on paging alerts, warning otherwise. No `summary` annotation.
 
-**Why it matters on call:** the summary is the notification title in most pagers and chat integrations. Without it the responder sees only an alert name and has to open a dashboard to learn what is wrong and where.
+The summary is the notification title in most pagers and chat integrations. Without it the responder sees an alert name and has to open a dashboard to learn what is wrong and where.
 
 ### missing-description
 
-No `description` annotation.
+Warning. No `description` annotation.
 
-**Why it matters on call:** the description carries what a one-line summary cannot: user impact, what the threshold means and the likely blast radius. It helps the responder decide in seconds whether to escalate.
+The description carries what a one-line summary cannot: user impact, what the threshold means, likely blast radius. It lets the responder decide quickly whether to escalate.
 
 ### missing-severity
 
-No `severity` label (the label name is configurable).
+Error. No `severity` label (the label name is configurable).
 
-**Why it matters on call:** Alertmanager routing decides from severity whether someone is woken. An alert without one either falls through to a default receiver nobody watches, or pages when it should have been a ticket.
+Alertmanager routing decides from severity whether someone is woken. Without one the alert falls through to a default receiver nobody watches, or pages when it should have been a ticket.
 
 ### unknown-severity
 
-The severity value is not in `allowed_severities` (default `critical`, `page`, `warning`, `info`, `none`).
+Error. The severity is not in `allowed_severities` (default `critical`, `page`, `warning`, `info`, `none`).
 
-**Why it matters on call:** values such as `crit`, `P1` or `High` slip past routes that match exact values, so the alert silently goes to the wrong receiver or nowhere. This is one of the commonest ways a "critical" alert never pages.
+Values such as `crit`, `P1` or `High` slip past routes that match exact values, so the alert goes to the wrong receiver or nowhere. This is one of the commonest ways a "critical" alert never pages.
 
 ### missing-owner-label
 
-None of the `owner_labels` (default `team`, `owner`) is set, either on the rule or on its group's `labels:`.
+Warning. None of the `owner_labels` (default `team`, `owner`) is set on the rule or its group's `labels:`.
 
-**Why it matters on call:** an alert without an owner pages whoever holds the default route, who then has to find the right team mid-incident. Ownership labels let routing reach the people who can fix it, and make per-team alert-quality reviews possible.
+An unowned alert pages whoever holds the default route, who then has to find the right team mid-incident. Owner labels let routing reach the people who can fix it and make per-team alert-quality reviews possible.
 
 ### cause-based-paging
 
-A paging alert whose expression selects resource metrics: CPU, memory, load, filesystem, disk I/O, container resources and runtime memory (see `cause_metrics` for the patterns). Expressions using `predict_linear()` are exempt.
+Warning, paging alerts only. The expression selects resource metrics: CPU, memory, load, filesystem, disk I/O, container resources, runtime memory (see `cause_metrics`). Expressions using `predict_linear()` are exempt.
 
-**Why it matters on call:** high CPU or memory is a cause, not a symptom. Plenty of healthy systems run hot, and plenty of outages happen at 20% CPU. Paging on causes produces pages with no user impact and still misses outages that do have impact. Page on what users feel (error rate, latency, SLO burn rate) and send causes to a ticket or dashboard, where they help diagnosis. A disk that will be full in four hours is the classic exception, because the outage is certain and imminent, hence the `predict_linear()` exemption.
+High CPU or memory is a cause, not a symptom. Plenty of healthy systems run hot and plenty of outages happen at 20% CPU, so these pages fire without user impact and still miss real outages. Page on what users feel (error rate, latency, SLO burn rate) and send causes to a ticket or dashboard. A disk that will be full in four hours is the classic exception, hence the `predict_linear()` exemption.
 
 ### rate-window-too-short
 
-`rate()`, `irate()`, `increase()`, `delta()`, `idelta()` or `deriv()` over a range shorter than `rate_window_factor` (default 4) times `scrape_interval` (default `1m`, the Prometheus default). Subqueries with an explicit step are checked against the step instead. Recording rules are checked too, because alerts are built on them.
+Error, alerts and recording rules. `rate()`, `irate()`, `increase()`, `delta()`, `idelta()` or `deriv()` over a range shorter than `rate_window_factor` (default 4) times `scrape_interval` (default `1m`, the Prometheus default). Subqueries with an explicit step are checked against the step.
 
-**Why it matters on call:** these functions need at least two samples inside the window. With a window under about four scrape intervals, one missed or late scrape leaves too few samples, the expression returns nothing and the alert cannot fire, which tends to happen exactly when the target is struggling. Set `scrape_interval` to your real global interval: with 15s scrapes, `[1m]` is fine.
+These functions need at least two samples in the window. Below about four scrapes, one missed or late scrape leaves too few samples and the expression returns nothing, which tends to happen exactly when the target is struggling. Recording rules are checked because alerts are built on them. Set `scrape_interval` to your real interval: with 15s scrapes, `[1m]` is fine.
 
 ### high-cardinality-grouping
 
-A paging alert that aggregates `by (...)` a label in `high_cardinality_labels` (default includes `pod`, `container`, `instance`, `path`, `user_id`). Warning only.
+Warning, paging alerts only. The alert aggregates `by (...)` a label in `high_cardinality_labels` (defaults include `pod`, `container`, `instance`, `path`, `user_id`).
 
-**Why it matters on call:** `sum by (pod)` on a paging alert turns one incident into one page per pod. A bad rollout across 40 pods should be one page with the pods listed in the description, not 40 pages and 40 acknowledgements. It is a warning because some per-instance pages are deliberate (an etcd member, a database primary); silence those with an [inline directive](#inline-directives) that says why.
+`sum by (pod)` turns one incident into one page per pod: a bad rollout across 40 pods should be one page with the pods listed, not 40 acknowledgements. Some per-instance pages are deliberate (an etcd member, a database primary), so silence those with an [inline directive](#inline-directives) that says why.
 
 ### duplicate-alert
 
-The same alert name with identical static labels is defined twice, in the same file or across files.
+Error, across all files in the run. The same alert name with identical static labels is defined twice.
 
-**Why it matters on call:** Alertmanager identifies alerts by their labels, so two such definitions look like one alert. Silences, inhibitions and grouping act on both, and responders see duplicate or flip-flopping notifications for what is usually a copy-paste mistake. The same name with *different* labels, typically a `warning` tier and a `critical` tier, is a normal pattern and is not reported.
+Alertmanager identifies alerts by labels, so the two look like one alert: silences, inhibitions and grouping act on both. The same name with different labels, typically a `warning` and a `critical` tier, is a normal pattern and is not reported.
 
 ### unknown-directive
 
-An inline `alert-linter: disable=...` comment names a rule that does not exist.
+Warning. An inline `alert-linter: disable=...` comment names a rule that does not exist.
 
-**Why it matters on call:** a misspelt directive suppresses nothing, so the finding keeps failing CI and people learn to ignore the linter, which defeats its purpose.
+A misspelt directive suppresses nothing, the finding keeps failing CI, and people learn to ignore the linter.
 
 ## Configuration
 
-All keys are optional. `alert-linter` reads `.alert-linter.yaml` from the working directory if present, or the file given with `--config`. Unknown keys and unknown rule IDs are errors, so a typo cannot silently turn a check off. A commented example is in [`examples/alert-linter.yaml`](examples/alert-linter.yaml).
+All keys are optional. The linter reads `.alert-linter.yaml` from the working directory, or the file given with `--config`. Unknown keys and unknown rule IDs are errors, so a typo cannot quietly turn a check off. A commented example is in [`examples/alert-linter.yaml`](examples/alert-linter.yaml).
 
 ```yaml
 scrape_interval: 1m           # your global scrape interval
@@ -220,7 +180,7 @@ rules:                        # per rule: off, error, warning or info
 fail_on: error                # error, warning, info or never; --fail-on overrides
 ```
 
-The built-in `cause_metrics` list covers node exporter CPU, load, memory, filesystem and disk metrics, cAdvisor container CPU, memory and filesystem metrics, `process_cpu_seconds_total`, `process_resident_memory_bytes`, `kube_pod_container_resource_*`, `jvm_memory_*`, `go_memstats_*`, and node-mixin style recording rules containing `node_cpu_utilisation` or `node_memory_utilisation`.
+The built-in `cause_metrics` list covers node exporter CPU, load, memory, filesystem and disk metrics; cAdvisor container CPU, memory and filesystem metrics; `process_cpu_seconds_total`, `process_resident_memory_bytes`, `kube_pod_container_resource_*`, `jvm_memory_*`, `go_memstats_*`; and node-mixin recording rules containing `node_cpu_utilisation` or `node_memory_utilisation`.
 
 ## Inline directives
 
@@ -235,13 +195,11 @@ rules:
     for: 30s # alert-linter: disable=short-for
 ```
 
-- `# alert-linter: disable=<id>[,<id>...]` applies to the rule whose lines contain it (for example a trailing comment on `for:`) or, when placed between rules, to the next rule below it.
-- `# alert-linter: disable-file=<id>[,<id>...]` applies to the whole file.
-- `all` disables every rule. Text after the ID list (such as `-- reason`) is ignored, so use it.
+`# alert-linter: disable=<id>[,<id>...]` applies to the rule whose lines contain it (a trailing comment on `for:`, say) or, between rules, to the next rule below. `# alert-linter: disable-file=<id>[,<id>...]` covers the whole file, and `all` disables every rule. Anything after the ID list, such as `-- reason`, is ignored, so use it.
 
 ## GitHub Actions and code scanning
 
-The repository is also a composite GitHub Action ([`action.yml`](action.yml)) that builds the linter and runs it. With SARIF output, findings appear as code scanning alerts and as annotations on the pull request diff. A complete workflow is in [`examples/github-workflow.yml`](examples/github-workflow.yml):
+The repository is also a composite GitHub Action ([`action.yml`](action.yml)) that builds the linter from source and runs it. With SARIF output, findings show up as code scanning alerts and as annotations on the pull request diff. SARIF lists every rule, not only those that fired, because code scanning uses the list for help text and to close fixed alerts. Full workflow: [`examples/github-workflow.yml`](examples/github-workflow.yml).
 
 ```yaml
 permissions:
@@ -266,9 +224,7 @@ jobs:
           category: alert-linter
 ```
 
-Action inputs: `paths` (required, space-separated), `config`, `format`, `output`, `fail-on`. For a plain pass/fail check, drop the SARIF inputs and the upload step; the text output appears in the job log.
-
-This repository's own [CI](.github/workflows/ci.yml) runs gofmt, `go vet`, golangci-lint, race-enabled tests including the golden tests, checks that the good sample exits 0 and the bad sample exits 1, and runs the action itself with `uses: ./`.
+Inputs: `paths` (required, space-separated), `config`, `format`, `output`, `fail-on`. For a plain pass/fail check, drop the SARIF inputs and the upload step; the text output lands in the job log.
 
 ## How it works
 
@@ -287,23 +243,19 @@ flowchart LR
     F --> X[exit code<br/>from --fail-on]
 ```
 
-1. **Load** ([`internal/loader`](internal/loader/loader.go)). Each file is decoded into `yaml.v3` nodes rather than structs, so every field keeps its line and column. Plain rule files and `PrometheusRule` manifests are both understood. Group-level `labels:` are merged under rule labels, as Prometheus does. Structural problems are recorded rather than aborting, so one bad rule does not hide findings in the rest of the file. Raw lines are scanned for `alert-linter:` directives, which are attached to the right rule by line span.
-2. **Parse PromQL** ([`internal/lint`](internal/lint/lint.go)). Each `expr` is parsed once with the upstream Prometheus parser. Checks walk the AST: metric names from vector selectors (including `{__name__="..."}`), ranges from matrix selectors and subqueries, and `by (...)` lists from aggregations.
-3. **Check** ([`internal/lint/checks.go`](internal/lint/checks.go)). Each rule is a small function from a rule to zero or more issues, registered with an ID, a summary and a "why" that feeds `--list-rules` and the SARIF help text. `duplicate-alert` runs across all files in one pass.
-4. **Filter and report** ([`internal/report`](internal/report/report.go)). Config overrides and directives are applied, findings are sorted by file and position, and rendered as text, JSON or SARIF. The exit code comes from the highest severity against `--fail-on`.
+The [loader](internal/loader/loader.go) decodes each file into `yaml.v3` nodes, merges group `labels:` under rule labels as Prometheus does, and records structural problems instead of aborting, so one bad rule does not hide findings in the rest of the file. Directives are attached to rules by line span. The [linter](internal/lint/lint.go) parses each `expr` once and runs the [check registry](internal/lint/checks.go): each check is a small function with an ID, a summary and a "why" that feeds `--list-rules` and the SARIF help text. `duplicate-alert` runs as a separate pass across all files. Config overrides and directives are applied last, then findings are sorted and [rendered](internal/report/report.go).
 
-## Design decisions and trade-offs
+## Design decisions
 
-- **The real PromQL parser, not regular expressions.** Regexes cannot reliably tell `by (pod)` inside an aggregation from a label matcher, or find the range of a `rate()` nested three functions deep. Using `github.com/prometheus/prometheus/promql/parser` means the linter sees exactly the AST Prometheus would. The cost is a larger dependency tree and binary than a hand-rolled parser (the stripped binary built here is about 7.6 MB).
-- **yaml.v3 nodes for positions.** Unmarshalling into structs loses line numbers. Working with nodes costs some code but every finding points at the exact field, which is what makes the text output clickable and the SARIF annotations land on the right line of a pull request.
-- **Paging is defined by severity, and severity of a finding depends on it.** A missing runbook on a ticket is an annoyance; on a page it is a slower incident. Rules that matter most for pages are errors there and warnings elsewhere, which keeps CI strict where it counts without flooding teams on day one.
-- **Opinionated defaults, everything overridable.** Defaults follow common practice (Prometheus's 1m default scrape interval, 4x rate windows, `team`/`owner` labels), but every threshold, label list and rule severity is configurable, and the config is strictly validated so a typo fails loudly.
-- **Warnings for judgement calls.** `cause-based-paging` and `high-cardinality-grouping` are heuristics with legitimate exceptions, so they warn by default; teams that want them blocking can set them to `error`. Mechanical defects (missing `for:` on a page, short rate windows, unknown severities) are errors.
-- **Duplicates are name plus labels, not name alone.** Reporting every repeated name would flag the common and correct warning/critical tier pattern; identical name and labels is the case that actually confuses Alertmanager.
-- **Lenient parsing.** Experimental PromQL functions are accepted. This tool is about on-call hygiene; `promtool check rules` against your real Prometheus version remains the authority on what loads.
-- **Directives live next to the rule.** Suppressions in a central config drift away from the code they excuse. Inline comments travel with the rule through review, and the `-- reason` convention keeps the justification visible.
-- **SARIF lists every rule, not only the ones that fired.** Code scanning uses the rule list for help text and to close alerts that have been fixed.
-- **Small surface.** One binary, no network access, no Prometheus server needed. For deeper checks against a live Prometheus (does this metric exist, would this query return data), [pint](https://github.com/cloudflare/pint) from Cloudflare is the more complete tool; `alert-linter` is deliberately narrow and offline.
+**The real PromQL parser, not regexes.** Regexes cannot reliably tell `by (pod)` in an aggregation from a label matcher, or find the range of a `rate()` nested three calls deep, and false positives are what kill a linter's credibility. Using `prometheus/promql/parser` means the linter sees the AST Prometheus sees. The cost is a heavy dependency tree and a 7.6 MB stripped binary, which is fine for CI. Parsing is lenient about experimental functions; `promtool check rules` against your real Prometheus version stays the authority on what loads.
+
+**yaml.v3 nodes for positions.** Unmarshalling into structs loses line numbers. Working with nodes is more code, but every finding points at the exact field, which is what makes the text output clickable and puts SARIF annotations on the right line of a pull request.
+
+**Finding severity depends on whether the alert pages.** A missing runbook on a ticket is an annoyance; on a page it is a slower incident. Heuristics with legitimate exceptions (`cause-based-paging`, `high-cardinality-grouping`) only warn, while mechanical defects fail the build. That keeps CI strict where it counts without making teams fight the tool on day one. Teams that agree with the heuristics can promote them to `error` in config, as the example config does.
+
+**Suppressions live next to the rule.** A central exemption list drifts away from the code it excuses. Inline comments travel with the rule through review, and the `-- reason` convention keeps the justification visible. With thousands of rules I would add a baseline mode, so existing findings do not block and only new ones do, and report directives that no longer suppress anything.
+
+**Narrow and offline.** One binary, no network, no Prometheus server in CI. For checks against a live Prometheus (does this metric exist, would this query return data), Cloudflare's [pint](https://github.com/cloudflare/pint) is the more complete tool, and the two can run side by side.
 
 ## Testing
 
@@ -314,25 +266,26 @@ make golden   # regenerate golden files after an intended output change
 make demo     # lint both sample files
 ```
 
-All tests run offline with no credentials. As of the latest commit, `go test ./...` runs 26 test functions (64 including table-driven subtests), all passing; statement coverage is 95.5% for `internal/lint`, 96.5% for `internal/report`, 85.1% for `internal/cli`, 82.8% for `internal/loader` and 81.9% for `internal/config`. The golden SARIF file validates against the SARIF 2.1.0 JSON schema (checked locally with Python `jsonschema`; that check is not part of CI).
+Tests run offline with no credentials: 26 test functions, 64 including table-driven subtests. Statement coverage is 95.5% for `internal/lint`, 96.5% for `internal/report`, 85.1% for `internal/cli`, 82.8% for `internal/loader` and 81.9% for `internal/config`. Golden tests run the real CLI from the repository root against [`examples/`](examples) in text, JSON and SARIF, with the example config, a `PrometheusRule` manifest, `--fail-on warning` and `--list-rules`. I checked the golden SARIF against the SARIF 2.1.0 JSON schema locally with Python `jsonschema`; that check is not in CI.
 
-Golden tests run the real CLI from the repository root against [`examples/`](examples) and compare text, JSON and SARIF output, a run with the example config, a `PrometheusRule` manifest, `--fail-on warning` and `--list-rules`.
+[CI](.github/workflows/ci.yml) runs gofmt, `go vet`, golangci-lint and the race-enabled tests, checks that the good sample exits 0 and the bad sample exits 1, and runs the action itself with `uses: ./`.
 
 ## Limitations
 
-- **Static only.** It does not query Prometheus, so it cannot tell whether a metric exists, whether `scrape_interval` matches reality, or whether an alert would ever fire.
-- **Heuristics.** `cause-based-paging` matches metric names against patterns and will miss causes hidden behind custom recording-rule names unless you add them to `cause_metrics`. `high-cardinality-grouping` only looks at `by (...)`; an expression with no aggregation at all (such as `up == 0` on a paging alert) also fans out per series and is not reported, because flagging every unaggregated paging alert would be too noisy.
-- **No `for:` exemption for burn-rate alerts.** Some multi-window burn-rate alerts are written without `for:` because the windows already smooth the signal. The linter cannot reliably detect that, so add a short `for:` or a directive.
-- **Labels from outside the rule file are invisible.** Labels added by `external_labels`, relabelling or Alertmanager are not known, so `missing-owner-label` can be a false positive in setups that inject ownership elsewhere. Turn it off in that case.
-- **Directive placement inside folded block scalars.** Directive line spans are exact for literal (`|`) multi-line expressions; for folded (`>`) ones the end of the rule is estimated.
-- **Positions are per field.** A finding about part of a multi-line `expr` points at the start of the expression, not the exact sub-expression.
+- Static only. It cannot tell whether a metric exists, whether `scrape_interval` matches reality, or whether an alert would ever fire.
+- `cause-based-paging` matches metric names, so causes hidden behind custom recording-rule names are missed unless you add them to `cause_metrics`.
+- `high-cardinality-grouping` only looks at `by (...)`. An unaggregated paging alert such as `up == 0` also fans out per series and is not reported; flagging all of those would be too noisy.
+- Multi-window burn-rate alerts are sometimes written without `for:` on purpose. The linter cannot detect that, so add a short `for:` or a directive.
+- Labels added by `external_labels`, relabelling or Alertmanager are invisible, so `missing-owner-label` can be a false positive where ownership is injected elsewhere. Turn it off in that case.
+- Directive line spans are exact for literal (`|`) multi-line expressions; for folded (`>`) ones the end of the rule is estimated.
+- A finding about part of a multi-line `expr` points at the start of the expression, not the sub-expression.
 
 ## Roadmap
 
-- `--fix` for mechanical issues (add a placeholder `for:`, normalise severity aliases).
-- Report directives that no longer suppress anything, so stale exemptions get cleaned up.
-- Optional check that `summary`/`description` templates reference labels the expression actually keeps.
-- Tagged releases with prebuilt binaries so the Action does not need to build from source.
+- `--fix` for mechanical issues (placeholder `for:`, normalising severity aliases).
+- Report directives that no longer suppress anything.
+- Check that `summary`/`description` templates reference labels the expression keeps.
+- Tagged releases with prebuilt binaries, so the Action does not build from source on every run.
 
 ## Licence
 
