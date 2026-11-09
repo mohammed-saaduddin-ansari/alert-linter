@@ -28,7 +28,7 @@ func TestText(t *testing.T) {
 	for _, want := range []string{
 		"./rules/a.yaml:7:14: warning: m1 [short-for]\n    hint: h1\n",
 		"/abs/b.yaml:3:9: error: m2 [missing-severity]\n",
-		"2 findings (1 error, 1 warning, 0 info) in 1 file; checked 2 alerts and 0 recording rules\n",
+		"2 findings (1 error, 1 warning) in 1 file; checked 2 alerts and 0 recording rules\n",
 	} {
 		if !strings.Contains(out, want) {
 			t.Errorf("text output missing %q:\n%s", want, out)

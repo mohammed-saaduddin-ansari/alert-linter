@@ -75,3 +75,13 @@ func TestEmptyConfigIsDefaults(t *testing.T) {
 		t.Errorf("owner labels = %v", c.OwnerLabels)
 	}
 }
+
+func TestUnquotedOffIsAString(t *testing.T) {
+	c, err := Parse([]byte("rules:\n  short-for: off\n"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if c.Rules["short-for"] != "off" {
+		t.Errorf("got %q", c.Rules["short-for"])
+	}
+}

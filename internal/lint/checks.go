@@ -389,37 +389,57 @@ func runRateWindow(t *target) []issue {
 	}
 	factor := time.Duration(t.cfg.RateWindowFactor)
 	minWindow := factor * t.cfg.ScrapeInterval
-	var out []issue
-	seen := map[string]bool{}
+	var short, subqueries []string
 	parser.Inspect(t.expr, func(n parser.Node, _ []parser.Node) error {
 		call, ok := n.(*parser.Call)
 		if !ok || !rateFunctions[call.Func.Name] || len(call.Args) == 0 {
 			return nil
 		}
-		var msg string
 		switch arg := call.Args[0].(type) {
 		case *parser.MatrixSelector:
+			// Range is 0 for experimental duration expressions; skip those.
 			if arg.Range > 0 && arg.Range < minWindow {
-				msg = fmt.Sprintf("%s(%s) uses a %s window, less than %d x the %s scrape interval (%s); one missed scrape leaves too few samples and it returns nothing",
-					call.Func.Name, arg.String(), dur(arg.Range), t.cfg.RateWindowFactor, dur(t.cfg.ScrapeInterval), dur(minWindow))
+				s := fmt.Sprintf("%s(%s)", call.Func.Name, arg.String())
+				if !slices.Contains(short, s) {
+					short = append(short, s)
+				}
 			}
 		case *parser.SubqueryExpr:
 			if arg.Step > 0 && arg.Range < factor*arg.Step {
-				msg = fmt.Sprintf("%s(%s) covers %s at a %s step, fewer than %d points",
-					call.Func.Name, arg.String(), dur(arg.Range), dur(arg.Step), t.cfg.RateWindowFactor)
+				s := fmt.Sprintf("%s(%s)", call.Func.Name, arg.String())
+				if !slices.Contains(subqueries, s) {
+					subqueries = append(subqueries, s)
+				}
 			}
-		}
-		if msg != "" && !seen[msg] {
-			seen[msg] = true
-			out = append(out, issue{
-				pos:  t.ExprPos,
-				msg:  fmt.Sprintf("%q: %s", t.Name, msg),
-				hint: fmt.Sprintf("use a window of at least %s, or set scrape_interval in the config if your targets are scraped faster", dur(minWindow)),
-			})
 		}
 		return nil
 	})
+	var out []issue
+	if len(short) > 0 {
+		out = append(out, issue{
+			pos: t.ExprPos,
+			msg: fmt.Sprintf("%q: %s %s shorter than %d x the %s scrape interval (%s); one missed scrape leaves too few samples and the expression returns nothing",
+				t.Name, strings.Join(short, ", "), pick(len(short) == 1, "uses a window", "use windows"),
+				t.cfg.RateWindowFactor, dur(t.cfg.ScrapeInterval), dur(minWindow)),
+			hint: fmt.Sprintf("use a window of at least %s, or set scrape_interval in the config if your targets are scraped faster", dur(minWindow)),
+		})
+	}
+	if len(subqueries) > 0 {
+		out = append(out, issue{
+			pos: t.ExprPos,
+			msg: fmt.Sprintf("%q: %s %s fewer than %d subquery steps, too few points for a stable rate",
+				t.Name, strings.Join(subqueries, ", "), pick(len(subqueries) == 1, "covers", "cover"), t.cfg.RateWindowFactor),
+			hint: fmt.Sprintf("make the subquery range at least %d x its step", t.cfg.RateWindowFactor),
+		})
+	}
 	return out
+}
+
+func pick(cond bool, a, b string) string {
+	if cond {
+		return a
+	}
+	return b
 }
 
 func runHighCardinality(t *target) []issue {

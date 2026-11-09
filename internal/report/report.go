@@ -47,11 +47,13 @@ func Text(w io.Writer, res lint.Result) error {
 	if len(res.Findings) > 0 {
 		b.WriteString("\n")
 	}
-	fmt.Fprintf(&b, "%s (%s, %s, %s) in %s; checked %s and %s\n",
+	counts := plural(res.Count(lint.Error), "error") + ", " + plural(res.Count(lint.Warning), "warning")
+	if n := res.Count(lint.Info); n > 0 {
+		counts += ", " + plural(n, "info")
+	}
+	fmt.Fprintf(&b, "%s (%s) in %s; checked %s and %s\n",
 		plural(len(res.Findings), "finding"),
-		plural(res.Count(lint.Error), "error"),
-		plural(res.Count(lint.Warning), "warning"),
-		plural(res.Count(lint.Info), "info"),
+		counts,
 		plural(res.Files, "file"),
 		plural(res.Alerts, "alert"),
 		plural(res.Records, "recording rule"))
