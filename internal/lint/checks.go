@@ -324,7 +324,7 @@ func metricNames(e parser.Expr) []string {
 		name := vs.Name
 		if name == "" {
 			for _, m := range vs.LabelMatchers {
-				if m.Name == labels.MetricName && m.Type == labels.MatchEqual {
+				if m.Name == model.MetricNameLabel && m.Type == labels.MatchEqual {
 					name = m.Value
 				}
 			}

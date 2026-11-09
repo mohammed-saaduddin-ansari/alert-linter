@@ -1,5 +1,3 @@
 /bin/
-/dist/
 *.sarif
-!testdata/**/*.sarif
 coverage.out

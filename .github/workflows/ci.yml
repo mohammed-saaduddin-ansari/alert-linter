@@ -1,0 +1,55 @@
+name: ci
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-go@v7
+        with:
+          go-version-file: go.mod
+      - name: gofmt
+        run: test -z "$(gofmt -l .)" || (gofmt -l . && exit 1)
+      - name: go vet
+        run: go vet ./...
+      - uses: golangci/golangci-lint-action@v9
+        with:
+          version: v2.14.0
+
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-go@v7
+        with:
+          go-version-file: go.mod
+      - name: Unit and golden tests
+        run: go test -race ./...
+      - name: Build
+        run: make build
+      - name: Good rules pass
+        run: bin/alert-linter examples/good-rules.yaml
+      - name: Bad rules fail with exit code 1
+        run: |
+          set +e
+          bin/alert-linter examples/bad-rules.yaml > /dev/null
+          code=$?
+          echo "exit code: $code"
+          test "$code" -eq 1
+
+  action:
+    # Exercise the composite action in action.yml the way a consumer would.
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: ./
+        with:
+          paths: examples/good-rules.yaml

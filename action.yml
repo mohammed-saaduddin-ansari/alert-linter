@@ -1,0 +1,55 @@
+name: alert-linter
+description: Lint Prometheus alerting rules for on-call anti-patterns (text, JSON or SARIF output).
+branding:
+  icon: bell
+  color: orange
+
+inputs:
+  paths:
+    description: Space-separated rule files or directories to lint.
+    required: true
+  config:
+    description: Path to a config file. Defaults to .alert-linter.yaml in the working directory, if present.
+    required: false
+    default: ""
+  format:
+    description: Output format, one of text, json or sarif.
+    required: false
+    default: text
+  output:
+    description: Write the report to this file instead of the log (use with format sarif).
+    required: false
+    default: ""
+  fail-on:
+    description: Lowest severity that fails the step, one of error, warning, info or never.
+    required: false
+    default: ""
+
+runs:
+  using: composite
+  steps:
+    - uses: actions/setup-go@v7
+      with:
+        go-version-file: ${{ github.action_path }}/go.mod
+        cache: false
+    - name: Build alert-linter
+      shell: bash
+      working-directory: ${{ github.action_path }}
+      run: go build -trimpath -o "$RUNNER_TEMP/alert-linter" ./cmd/alert-linter
+    - name: Run alert-linter
+      shell: bash
+      # Inputs go through env rather than ${{ }} in the script to avoid
+      # shell injection from workflow inputs.
+      env:
+        AL_PATHS: ${{ inputs.paths }}
+        AL_CONFIG: ${{ inputs.config }}
+        AL_FORMAT: ${{ inputs.format }}
+        AL_OUTPUT: ${{ inputs.output }}
+        AL_FAIL_ON: ${{ inputs.fail-on }}
+      run: |
+        args=(--format "$AL_FORMAT")
+        if [ -n "$AL_CONFIG" ]; then args+=(--config "$AL_CONFIG"); fi
+        if [ -n "$AL_OUTPUT" ]; then args+=(--output "$AL_OUTPUT"); fi
+        if [ -n "$AL_FAIL_ON" ]; then args+=(--fail-on "$AL_FAIL_ON"); fi
+        read -r -a paths <<< "$AL_PATHS"
+        "$RUNNER_TEMP/alert-linter" "${args[@]}" "${paths[@]}"

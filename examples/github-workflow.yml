@@ -1,0 +1,36 @@
+# Example workflow for a repository that keeps Prometheus rules under
+# monitoring/rules. Copy to .github/workflows/alert-rules.yml.
+#
+# Findings show up as code scanning alerts and as annotations on the pull
+# request diff. The upload step runs even when the lint step fails, so the
+# findings are visible on exactly the runs where they matter.
+name: alert-rules
+
+on:
+  pull_request:
+    paths: ["monitoring/rules/**", ".alert-linter.yaml"]
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+  security-events: write # needed to upload SARIF
+
+jobs:
+  alert-linter:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+
+      # There are no release tags yet; pin to a commit SHA in real use.
+      - uses: mohammed-saaduddin-ansari/alert-linter@main
+        with:
+          paths: monitoring/rules
+          format: sarif
+          output: alert-linter.sarif
+
+      - uses: github/codeql-action/upload-sarif@v4
+        if: always()
+        with:
+          sarif_file: alert-linter.sarif
+          category: alert-linter
